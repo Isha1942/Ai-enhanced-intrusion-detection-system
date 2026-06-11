@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Web Attack Prediction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --neon: #00f5ff;
+        --neon2: #bf00ff;
+        --neon3: #ff003c;
+        --dark: #020408;
+        --panel: rgba(2, 15, 25, 0.92);
+        --border: rgba(0, 245, 255, 0.3);
+        --text: #c8f0ff;
+        --muted: rgba(0, 245, 255, 0.5);
+      }
+
+      body {
+        font-family: 'Share Tech Mono', monospace;
+        background: var(--dark);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        color: var(--text);
+      }
+
+      /* ── Animated grid background ── */
+      .grid-bg {
+        position: fixed; inset: 0; z-index: 0;
+        background-image:
+          linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
+        animation: grid-drift 20s linear infinite;
+      }
+      @keyframes grid-drift {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(40px); }
+      }
+
+      /* ── Floating particles ── */
+      .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+      .particle {
+        position: absolute; border-radius: 50%;
+        animation: float-up linear infinite;
+        opacity: 0;
+      }
+      @keyframes float-up {
+        0% { transform: translateY(100vh) scale(0); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 0.6; }
+        100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+      }
+
+      /* ── Scan line ── */
+      .scanline {
+        position: fixed; inset: 0; z-index: 1; pointer-events: none;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 245, 255, 0.015) 2px,
+          rgba(0, 245, 255, 0.015) 4px
+        );
+      }
+      .scan-beam {
+        position: fixed; left: 0; right: 0; height: 2px; z-index: 2;
+        background: linear-gradient(90deg, transparent, rgba(0,245,255,0.6), transparent);
+        animation: scan 4s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes scan { 0% { top: -2px; } 100% { top: 100vh; } }
+
+      /* ── Main card ── */
+      .card {
+        position: relative; z-index: 10;
+        width: 480px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 48px 40px 36px;
+        box-shadow:
+          0 0 0 1px rgba(0,245,255,0.08),
+          inset 0 0 60px rgba(0,245,255,0.03);
+        animation: card-appear 0.8s ease both;
+        backdrop-filter: blur(12px);
+      }
+      @keyframes card-appear {
+        from { opacity: 0; transform: translateY(24px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      /* Corner brackets */
+      .card::before, .card::after {
+        content: ''; position: absolute;
+        width: 20px; height: 20px;
+      }
+      .card::before {
+        top: -1px; left: -1px;
+        border-top: 2px solid var(--neon);
+        border-left: 2px solid var(--neon);
+        box-shadow: -2px -2px 12px rgba(0,245,255,0.4);
+      }
+      .card::after {
+        bottom: -1px; right: -1px;
+        border-bottom: 2px solid var(--neon);
+        border-right: 2px solid var(--neon);
+        box-shadow: 2px 2px 12px rgba(0,245,255,0.4);
+      }
+
+      /* Extra corners via extra elements */
+      .corner-tr, .corner-bl {
+        position: absolute; width: 20px; height: 20px;
+      }
+      .corner-tr {
+        top: -1px; right: -1px;
+        border-top: 2px solid var(--neon2);
+        border-right: 2px solid var(--neon2);
+        box-shadow: 2px -2px 12px rgba(191,0,255,0.4);
+      }
+      .corner-bl {
+        bottom: -1px; left: -1px;
+        border-bottom: 2px solid var(--neon2);
+        border-left: 2px solid var(--neon2);
+        box-shadow: -2px 2px 12px rgba(191,0,255,0.4);
+      }
+
+      /* ── Header ── */
+      .header { text-align: center; margin-bottom: 36px; }
+
+      .shield {
+        width: 64px; height: 64px; margin: 0 auto 16px;
+        position: relative;
+      }
+      .shield svg { width: 100%; height: 100%; }
+      .shield-ring {
+        animation: shield-pulse 2s ease-in-out infinite;
+        transform-origin: center;
+      }
+      @keyframes shield-pulse {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50%       { opacity: 1;   transform: scale(1.08); }
+      }
+
+      .title {
+        font-family: 'Orbitron', monospace;
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: var(--neon);
+        text-shadow: 0 0 20px rgba(0,245,255,0.5);
+        animation: title-flicker 6s infinite;
+      }
+      @keyframes title-flicker {
+        0%, 95%, 100% { opacity: 1; }
+        96% { opacity: 0.6; }
+        97% { opacity: 1; }
+        98% { opacity: 0.7; }
+        99% { opacity: 1; }
+      }
+
+      .subtitle {
+        font-size: 0.7rem;
+        letter-spacing: 3px;
+        color: var(--muted);
+        margin-top: 6px;
+        text-transform: uppercase;
+      }
+
+      /* ── Divider ── */
+      .divider {
+        height: 1px; margin: 0 0 28px;
+        background: linear-gradient(90deg, transparent, var(--neon), var(--neon2), transparent);
+        opacity: 0.4;
+        position: relative;
+      }
+      .divider::before {
+        content: '◆'; position: absolute;
+        left: 50%; top: 50%; transform: translate(-50%, -50%);
+        color: var(--neon); font-size: 8px;
+        background: var(--panel); padding: 0 8px;
+      }
+
+      /* ── Form ── */
+      .field { margin-bottom: 20px; }
+
+      .field label {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 0.7rem; letter-spacing: 2px;
+        text-transform: uppercase; color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .field label::before {
+        content: '';
+        display: inline-block; width: 6px; height: 6px;
+        background: var(--neon2); border-radius: 50%;
+        box-shadow: 0 0 6px var(--neon2);
+        animation: dot-blink 2s ease-in-out infinite;
+      }
+      @keyframes dot-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .field input {
+        width: 100%; padding: 12px 16px;
+        background: rgba(0, 245, 255, 0.04);
+        border: 1px solid rgba(0,245,255,0.2);
+        border-radius: 2px;
+        color: var(--text);
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 1rem;
+        letter-spacing: 1px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        -moz-appearance: textfield;
+      }
+      .field input::-webkit-inner-spin-button,
+      .field input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+      .field input::placeholder { color: rgba(0,245,255,0.2); }
+
+      .field input:focus {
+        border-color: var(--neon);
+        background: rgba(0,245,255,0.07);
+        box-shadow: 0 0 0 1px rgba(0,245,255,0.2), inset 0 0 20px rgba(0,245,255,0.04);
+      }
+
+      /* ── Submit button ── */
+      .btn-wrap { margin-top: 28px; position: relative; }
+
+      .submit-btn {
+        width: 100%; padding: 14px;
+        background: transparent;
+        border: 1px solid var(--neon);
+        border-radius: 2px;
+        color: var(--neon);
+        font-family: 'Orbitron', monospace;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: color 0.3s;
+      }
+
+      .submit-btn::before {
+        content: ''; position: absolute;
+        inset: 0;
+        background: var(--neon);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 0;
+      }
+      .submit-btn:hover::before { transform: translateX(0); }
+      .submit-btn:hover { color: var(--dark); }
+      .submit-btn span { position: relative; z-index: 1; }
+
+      /* ── Loader overlay ── */
+      #loaderOverlay {
+        position: fixed; inset: 0; z-index: 100;
+        background: rgba(2, 4, 8, 0.92);
+        backdrop-filter: blur(6px);
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 32px;
+      }
+
+      .loader-ring {
+        position: relative; width: 100px; height: 100px;
+      }
+      .loader-ring svg { width: 100%; height: 100%; animation: spin 2s linear infinite; }
+      .loader-ring svg:nth-child(2) {
+        position: absolute; inset: 12px;
+        animation: spin 1.2s linear infinite reverse;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .loader-text {
+        font-family: 'Orbitron', monospace;
+        font-size: 0.75rem; letter-spacing: 6px;
+        color: var(--neon);
+        animation: text-blink 1s ease-in-out infinite;
+      }
+      @keyframes text-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .loader-bar {
+        width: 200px; height: 2px;
+        background: rgba(0,245,255,0.1);
+        border-radius: 2px; overflow: hidden;
+      }
+      .loader-bar-fill {
+        height: 100%; width: 0;
+        background: linear-gradient(90deg, var(--neon2), var(--neon));
+        animation: bar-fill 3s ease forwards;
+      }
+      @keyframes bar-fill { to { width: 100%; } }
+
+      /* ── Prediction modal ── */
+      #predictionModal {
+        display: none; position: fixed; inset: 0; z-index: 200;
+        background: rgba(2,4,8,0.8);
+        backdrop-filter: blur(8px);
+        align-items: center; justify-content: center;
+      }
+
+      .modal-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        width: 420px; max-width: 95vw;
+        padding: 40px 36px 32px;
+        position: relative;
+        animation: modal-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      @keyframes modal-in {
+        from { opacity: 0; transform: scale(0.8) rotateX(20deg); }
+        to   { opacity: 1; transform: scale(1) rotateX(0); }
+      }
+
+      .modal-card::before, .modal-card::after {
+        content: ''; position: absolute;
+        width: 16px; height: 16px;
+      }
+      .modal-card::before {
+        top: -1px; left: -1px;
+        border-top: 2px solid var(--neon); border-left: 2px solid var(--neon);
+      }
+      .modal-card::after {
+        bottom: -1px; right: -1px;
+        border-bottom: 2px solid var(--neon); border-right: 2px solid var(--neon);
+      }
+
+      .close-btn {
+        position: absolute; top: 14px; right: 16px;
+        background: none; border: 1px solid rgba(0,245,255,0.2);
+        color: var(--muted); width: 30px; height: 30px;
+        border-radius: 2px; cursor: pointer; font-size: 1rem;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s;
+      }
+      .close-btn:hover { border-color: var(--neon3); color: var(--neon3); }
+
+      .modal-title {
+        font-family: 'Orbitron', monospace;
+        font-size: 0.8rem; letter-spacing: 4px;
+        text-transform: uppercase; color: var(--muted);
+        margin-bottom: 24px;
+      }
+
+      .result-display {
+        text-align: center; margin: 16px 0 28px;
+      }
+      .result-label {
+        font-size: 0.65rem; letter-spacing: 3px;
+        text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+      }
+      .result-value {
+        font-family: 'Orbitron', monospace;
+        font-size: 1.8rem; font-weight: 900;
+        letter-spacing: 3px;
+        color: var(--neon3);
+        text-shadow: 0 0 30px rgba(255,0,60,0.6);
+        animation: result-pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes result-pulse {
+        0%, 100% { text-shadow: 0 0 20px rgba(255,0,60,0.5); }
+        50%       { text-shadow: 0 0 40px rgba(255,0,60,0.9), 0 0 60px rgba(255,0,60,0.4); }
+      }
+
+      .input-summary {
+        border-top: 1px solid rgba(0,245,255,0.1);
+        padding-top: 20px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      }
+      .summary-item { }
+      .summary-label { font-size: 0.6rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+      .summary-val { font-size: 0.9rem; color: var(--neon); }
+
+      /* ── Background video ── */
+      .bg-video {
+        position: fixed; inset: 0; z-index: -1;
+        width: 100%; height: 100%; object-fit: cover;
+        opacity: 0.07;
+        filter: saturate(0);
+      }
+
+      @media (max-width: 520px) {
+        .card { width: 95vw; padding: 36px 24px 28px; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="grid-bg"></div>
+    <div class="scanline"></div>
+    <div class="scan-beam"></div>
+    <div class="particles" id="particles"></div>
+
+    <video class="bg-video" autoplay muted loop playsinline onerror="this.style.display='none'">
+      <source src="{{ url_for('static', filename='assets/i-am-free-anonymous.960x540.mp4') }}" type="video/mp4" />
+    </video>
+
+    <!-- Loader -->
+    <div id="loaderOverlay">
+      <div class="loader-ring">
+        <svg viewBox="0 0 80 80" fill="none">
+          <circle cx="40" cy="40" r="36" stroke="rgba(0,245,255,0.15)" stroke-width="3"/>
+          <circle cx="40" cy="40" r="36" stroke="url(#g1)" stroke-width="3" stroke-linecap="round" stroke-dasharray="60 160"/>
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00f5ff"/>
+              <stop offset="100%" stop-color="#bf00ff"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <svg viewBox="0 0 56 56" fill="none">
+          <circle cx="28" cy="28" r="24" stroke="rgba(191,0,255,0.2)" stroke-width="2"/>
+          <circle cx="28" cy="28" r="24" stroke="#bf00ff" stroke-width="2" stroke-linecap="round" stroke-dasharray="30 120"/>
+        </svg>
+      </div>
+      <div class="loader-text">INITIALIZING SYSTEM</div>
+      <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+    </div>
+
+    <!-- Main card -->
+    <div class="card">
+      <div class="corner-tr"></div>
+      <div class="corner-bl"></div>
+
+      <div class="header">
+        <div class="shield">
+          <svg viewBox="0 0 64 64" fill="none">
+            <path d="M32 6 L52 14 L52 34 C52 46 32 58 32 58 C32 58 12 46 12 34 L12 14 Z"
+              stroke="rgba(0,245,255,0.3)" stroke-width="1.5" fill="rgba(0,245,255,0.04)"/>
+            <path class="shield-ring" d="M32 6 L52 14 L52 34 C52 46 32 58 32 58 C32 58 12 46 12 34 L12 14 Z"
+              stroke="#00f5ff" stroke-width="1.5" fill="none"
+              stroke-dasharray="4 6"/>
+            <circle cx="32" cy="32" r="8" stroke="#bf00ff" stroke-width="1.5" fill="rgba(191,0,255,0.06)"/>
+            <circle cx="32" cy="32" r="3" fill="#00f5ff"/>
+            <line x1="32" y1="18" x2="32" y2="24" stroke="#00f5ff" stroke-width="1.5"/>
+            <line x1="32" y1="40" x2="32" y2="46" stroke="#00f5ff" stroke-width="1.5"/>
+            <line x1="18" y1="32" x2="24" y2="32" stroke="#00f5ff" stroke-width="1.5"/>
+            <line x1="40" y1="32" x2="46" y2="32" stroke="#00f5ff" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="title">Threat Detector</div>
+        <div class="subtitle">AI-Enhanced Intrusion Detection System</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <form method="POST" action="/predict" autocomplete="off" id="predictForm">
+        <div class="field">
+          <label for="flow_duration">Flow Duration</label>
+          <input type="number" step="any" id="flow_duration" name="flow_duration" required placeholder="0000000" />
+        </div>
+        <div class="field">
+          <label for="total_fwd_packets">Total Fwd Packets</label>
+          <input type="number" step="any" id="total_fwd_packets" name="total_fwd_packets" required placeholder="0000" />
+        </div>
+        <div class="field">
+          <label for="total_backward_packets">Total Backward Packets</label>
+          <input type="number" step="any" id="total_backward_packets" name="total_backward_packets" required placeholder="0000" />
+        </div>
+        <div class="field">
+          <label for="total_length_fwd_packets">Total Length of Fwd Packets</label>
+          <input type="number" step="any" id="total_length_fwd_packets" name="total_length_fwd_packets" required placeholder="0000" />
+        </div>
+        <div class="btn-wrap">
+          <button type="submit" class="submit-btn"><span>▶ &nbsp; Analyze Threat</span></button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Prediction Modal -->
+    <div id="predictionModal">
+      <div class="modal-card">
+        <button class="close-btn" onclick="closeModal()">✕</button>
+        <div class="modal-title">⬡ Scan Complete</div>
+        <div class="result-display">
+          <div class="result-label">Classification Result</div>
+          <div class="result-value" id="predictionValue"></div>
+        </div>
+        <div class="input-summary" id="predictionFields" style="display:none;">
+          <div class="summary-item">
+            <div class="summary-label">Flow Duration</div>
+            <div class="summary-val" id="fieldFlowDuration"></div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Fwd Packets</div>
+            <div class="summary-val" id="fieldTotalFwdPackets"></div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Bwd Packets</div>
+            <div class="summary-val" id="fieldTotalBackwardPackets"></div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Fwd Length</div>
+            <div class="summary-val" id="fieldTotalLengthFwdPackets"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if prediction %}
+    <script>
+      setTimeout(function () {
+        let stored = sessionStorage.getItem("lastFormData");
+        if (stored) {
+          let d = JSON.parse(stored);
+          document.getElementById("fieldFlowDuration").textContent = d.flow_duration || "";
+          document.getElementById("fieldTotalFwdPackets").textContent = d.total_fwd_packets || "";
+          document.getElementById("fieldTotalBackwardPackets").textContent = d.total_backward_packets || "";
+          document.getElementById("fieldTotalLengthFwdPackets").textContent = d.total_length_fwd_packets || "";
+          document.getElementById("predictionFields").style.display = "grid";
+          sessionStorage.removeItem("lastFormData");
+        }
+        document.getElementById("predictionValue").textContent = "{{ prediction|e }}";
+        document.getElementById("predictionModal").style.display = "flex";
+      }, 3200);
+    </script>
+    {% endif %}
+
+    <script>
+      // Hide loader
+      window.addEventListener("DOMContentLoaded", function () {
+        setTimeout(function () {
+          var l = document.getElementById("loaderOverlay");
+          if (l) { l.style.opacity = "0"; l.style.transition = "opacity 0.6s"; setTimeout(function(){ l.style.display = "none"; }, 600); }
+        }, 3000);
+      });
+
+      // Store form data before submit
+      document.getElementById("predictForm").addEventListener("submit", function () {
+        sessionStorage.setItem("lastFormData", JSON.stringify({
+          flow_duration: document.getElementById("flow_duration").value,
+          total_fwd_packets: document.getElementById("total_fwd_packets").value,
+          total_backward_packets: document.getElementById("total_backward_packets").value,
+          total_length_fwd_packets: document.getElementById("total_length_fwd_packets").value,
+        }));
+        document.getElementById("loaderOverlay").style.display = "flex";
+        document.getElementById("loaderOverlay").style.opacity = "1";
+      });
+
+      // Close modal
+      function closeModal() {
+        var m = document.getElementById("predictionModal");
+        m.style.opacity = "0"; m.style.transition = "opacity 0.3s";
+        setTimeout(function(){ m.style.display = "none"; m.style.opacity = ""; }, 300);
+      }
+      window.addEventListener("click", function(e){
+        var m = document.getElementById("predictionModal");
+        if (e.target === m) closeModal();
+      });
+
+      // Floating particles
+      (function() {
+        var container = document.getElementById("particles");
+        var colors = ["#00f5ff","#bf00ff","#ff003c"];
+        for (var i = 0; i < 30; i++) {
+          var p = document.createElement("div");
+          p.className = "particle";
+          var size = Math.random() * 3 + 1;
+          var color = colors[Math.floor(Math.random() * colors.length)];
+          p.style.cssText =
+            "width:" + size + "px; height:" + size + "px;" +
+            "background:" + color + ";" +
+            "left:" + (Math.random() * 100) + "vw;" +
+            "animation-duration:" + (Math.random() * 12 + 8) + "s;" +
+            "animation-delay:" + (Math.random() * 10) + "s;" +
+            "box-shadow: 0 0 " + (size * 3) + "px " + color + ";";
+          container.appendChild(p);
+        }
+      })();
+    </script>
+
+  </body>
+</html>
