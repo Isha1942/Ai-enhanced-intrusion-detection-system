@@ -247,15 +247,7 @@ The frontend (`templates/index.html`) is a fully custom-built cyberpunk-themed i
 - 🧠 **Deep learning models** (LSTM/CNN) for better attack pattern recognition
 - 📱 **Mobile interface** using React Native or Flutter
 - 🔔 **Email/SMS alerts** when an attack is detected
-- 🔐 **User login system** for access control and history tracking
-
----
-
-## 📄 License
-
-This project is built for academic and educational purposes as part of an AI Internship Program.
-
----
+- 🔐 **User login system** for access control and history trackinggit ad
 
 <div align="center">
 
