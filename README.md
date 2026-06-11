@@ -259,6 +259,6 @@ This project is built for academic and educational purposes as part of an AI Int
 
 <div align="center">
 
-** Cyber Security | AI Internship Program 2025–2026**
+
 
 </div>
